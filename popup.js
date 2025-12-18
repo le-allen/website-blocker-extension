@@ -13,3 +13,4 @@ function logTabs(tabs) {
 chrome.storage.local.get("time", (data) => {
     document.getElementById("time-field").textContent = data.time;
 });
+
