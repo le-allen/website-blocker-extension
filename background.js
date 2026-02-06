@@ -1,71 +1,80 @@
-// let brainrot = ["youtube.com", "x.com", "tiktok.com", "instagram.com"]; // put in storage, let user add and remove
-// let time = 0;
-// chrome.storage.local.set({ time });
-// let stopwatchOn = false;
+let CURRENT_BLOCKED = [];
 
-// chrome.runtime.onInstalled.addListener(() => {
-//     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-//         const tab = tabs[0];
-//         console.log(`init; currently on: ${tab.title} || ${tab.url}`)
+function toRules(blockedSites) {
+    const sites = Array.isArray(blockedSites) ? blockedSites : [];
+    return sites.map((site, index) => ({
+        id: index + 1,
+        priority: 1,
+        action: { type: "block" },
+        condition: {
+            urlFilter: site,
+            resourceTypes: ["main_frame"],
+        },
+    }));
+}
 
-//         stopwatch(tab);
-//     });
-// });
+function syncDynamicRules(blockedSites) {
+    CURRENT_BLOCKED = Array.isArray(blockedSites) ? blockedSites : [];
+    const addRules = toRules(blockedSites);
+    chrome.declarativeNetRequest.getDynamicRules((existingRules) => {
+        const removeRuleIds = existingRules.map((rule) => rule.id);
+        chrome.declarativeNetRequest.updateDynamicRules(
+            { removeRuleIds, addRules },
+            () => {
+                if (chrome.runtime.lastError) {
+                    console.error("[Website Blocker] Failed to update dynamic rules:", chrome.runtime.lastError.message);
+                } else {
+                    console.log("[Website Blocker] Dynamic rules updated:", addRules.map((r) => r.condition.urlFilter));
+                    clearBlockedTabs(blockedSites);
+                }
+            }
+        );
+    });
+}
 
-// // it seems like alt tabbing to new window and switch back to brainrot window will double the amount of ticks in stopwatch
-// function tick() {
-//     if(!stopwatchOn) return;
-//     time++;
-//     console.log(time)
-//     chrome.storage.local.set({ time }); // updates time shown on window, prob better way to do it
-//     setTimeout(tick, 1000);
-// }
-
-
-// // logic for starting the stopwatch
-// function stopwatch(tab) {
-//     if(brainrot.some(site => tab.url.includes(site))) {
-//         console.log("brainrotting")
-//         stopwatchOn = true;
-//     } else {
-//         console.log("chill")
-//         stopwatchOn = false;
-//     }
-//     tick();
-// }
-
-// chrome.windows.onFocusChanged.addListener((windowId) => {
-//     if(windowId === chrome.windows.WINDOW_ID_NONE) return;
-
-//     chrome.tabs.query({ active: true, windowId }, (tabs) => {
-//         const tab = tabs[0];
-//         console.log(`switched to: ${tab.title} || ${tab.url}`)
-        
-//         stopwatch(tab);
-//     });
-// });
-
-// REMOVER
-
-let TARGET = ["x.com", "instagram.com", "tiktok.com", "www.instagram.com", "www.tiktok.com"];
-// TARGET.push("https://discord.com/channels/@me/617207654808289290".replace("https://", ""));
-// TARGET.push("tiktok.com");
-// TARGET.push("instagram.com");
-
-function isTargetUrl(url) {
+function isBlockedUrl(url, blockedSites) {
+    if (!url) return false;
     try {
-        const u = new URL(url);
-        return TARGET.includes(u.hostname) | TARGET.includes(u.href);
-    } catch (e) {
-        console.log("mango mustard error");
+        const hostname = new URL(url).hostname.replace(/^www\./, "");
+        const sites = Array.isArray(blockedSites) ? blockedSites : [];
+        return sites.some((site) => hostname === site || hostname.endsWith(`.${site}`));
+    } catch (err) {
         return false;
     }
 }
 
-browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    if (changeInfo.url && isTargetUrl(changeInfo.url)) {
-        console.log("suc 67: " + changeInfo.url);
-        browser.tabs.remove(tabId).catch((err) => {console.error("err 41: " + err.message);});
+function clearBlockedTabs(blockedSites) {
+    chrome.tabs.query({}, (tabs) => {
+        const toClear = tabs.filter((tab) => isBlockedUrl(tab.url, blockedSites));
+        toClear.forEach((tab) => {
+            chrome.tabs.update(tab.id, { url: "about:blank" }).catch((err) => {
+                console.error("[Website Blocker] Failed to clear blocked tab:", err.message);
+            });
+        });
+    });
+}
+
+function loadAndSyncRules() {
+    chrome.storage.local.get({ blockedSites: [] }, (data) => {
+        syncDynamicRules(data.blockedSites);
+    });
+}
+
+chrome.runtime.onInstalled.addListener(loadAndSyncRules);
+chrome.runtime.onStartup.addListener(loadAndSyncRules);
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes.blockedSites) {
+        syncDynamicRules(changes.blockedSites.newValue);
     }
 });
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.url && isBlockedUrl(changeInfo.url, CURRENT_BLOCKED)) {
+        chrome.tabs.update(tabId, { url: "about:blank" }).catch((err) => {
+            console.error("[Website Blocker] Failed to clear blocked navigation:", err.message);
+        });
+    }
+});
+
 

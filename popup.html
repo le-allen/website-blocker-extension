@@ -8,13 +8,71 @@
       font-family: Arial, sans-serif;
       min-width: 400px;
       min-height: 300px;
-      padding: 10px;
+    }
+    .panel {
+      padding: 12px;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .extName {
+      font-family: cursive;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: #4b6bfb;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #3a54d1;
+    }
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+    button.secondary:hover {
+      background: #d1d5db;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .muted {
+      color: #6b7280;
+      font-style: italic;
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
-    <h1>Time Rotted:</h1>
-    <h2 id="time-field">loading</h2>
+    <div class="panel">
+      <h2 class="extName">Website Blocker 💥</h2>
+      <div class="row">
+        <input id="blocked-input" type="text" placeholder="example.com or https://example.com" />
+        <button id="add-blocked">Add</button>
+      </div>
+      <ul id="blocked-list"></ul>
+      <span class="muted">Lock in, twin</span>
+    </div>
 
 
     <script src="popup.js"></script>
