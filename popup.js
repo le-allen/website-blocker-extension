@@ -1,16 +1,3 @@
-// for debug
-// function logTabs(tabs) {
-//     console.log(tabs);
-//     tabs.forEach((tab, index) => {
-//         console.log(`Tab ${index +1}:`, tab.title)
-//   })
-// }
-
-// old feature: track time spent on sites
-// chrome.storage.local.get("time", (data) => {
-//     document.getElementById("time-field").textContent = data.time;
-// });
-
 const blockedInput = document.getElementById("blocked-input");
 const blockedList = document.getElementById("blocked-list");
 const addBlockedButton = document.getElementById("add-blocked");
@@ -28,43 +15,64 @@ function normalizeEntry(value) {
     }
 }
 
-function renderBlockedList(items) {
+function renderSites(sites) {
     blockedList.innerHTML = "";
-    if (!items.length) {
+    if (!sites.length) {
         const empty = document.createElement("li");
-        empty.textContent = "No blocked websites yet.";
+        empty.textContent = "No websites yet. Add one above.";
         empty.className = "muted";
         blockedList.appendChild(empty);
         return;
     }
 
-    items.forEach((item) => {
+    sites.forEach((site) => {
         const li = document.createElement("li");
+
         const label = document.createElement("span");
-        label.textContent = item;
+        label.textContent = site.host;
+        label.className = "host" + (site.enabled ? "" : " disabled");
+
+        const controls = document.createElement("div");
+        controls.className = "controls";
+
+        const toggleLabel = document.createElement("label");
+        toggleLabel.className = "switch";
+        toggleLabel.title = site.enabled ? "Blocked" : "Unblocked";
+
+        const toggle = document.createElement("input");
+        toggle.type = "checkbox";
+        toggle.checked = !!site.enabled;
+        toggle.addEventListener("change", () => toggleSite(site.host, toggle.checked));
+
+        const slider = document.createElement("span");
+        slider.className = "slider";
+
+        toggleLabel.appendChild(toggle);
+        toggleLabel.appendChild(slider);
 
         const removeButton = document.createElement("button");
         removeButton.textContent = "Remove";
         removeButton.className = "secondary";
-        removeButton.addEventListener("click", () => removeBlocked(item));
+        removeButton.addEventListener("click", () => removeSite(site.host));
+
+        controls.appendChild(toggleLabel);
+        controls.appendChild(removeButton);
 
         li.appendChild(label);
-        li.appendChild(removeButton);
+        li.appendChild(controls);
         blockedList.appendChild(li);
     });
 }
 
-function loadBlockedList() {
-    chrome.storage.local.get({ blockedSites: [] }, (data) => {
-        const items = Array.isArray(data.blockedSites) ? data.blockedSites : [];
-        renderBlockedList(items);
+function loadSites() {
+    chrome.storage.local.get({ sites: [] }, (data) => {
+        const items = Array.isArray(data.sites) ? data.sites : [];
+        renderSites(items);
     });
 }
 
-function updateBlockedList(nextList) {
-    chrome.storage.local.set({ blockedSites: nextList }, () => {
-        renderBlockedList(nextList);
-    });
+function saveSites(nextSites) {
+    chrome.storage.local.set({ sites: nextSites }, () => renderSites(nextSites));
 }
 
 function addBlocked() {
@@ -74,22 +82,29 @@ function addBlocked() {
         return;
     }
 
-    chrome.storage.local.get({ blockedSites: [] }, (data) => {
-        const items = Array.isArray(data.blockedSites) ? data.blockedSites : [];
-        if (!items.includes(normalized)) {
-            items.push(normalized);
-            items.sort();
-            updateBlockedList(items);
+    chrome.storage.local.get({ sites: [] }, (data) => {
+        const items = Array.isArray(data.sites) ? data.sites : [];
+        if (!items.some((s) => s.host === normalized)) {
+            items.push({ host: normalized, enabled: true });
+            items.sort((a, b) => a.host.localeCompare(b.host));
+            saveSites(items);
         }
         blockedInput.value = "";
     });
 }
 
-function removeBlocked(site) {
-    chrome.storage.local.get({ blockedSites: [] }, (data) => {
-        const items = Array.isArray(data.blockedSites) ? data.blockedSites : [];
-        const nextItems = items.filter((entry) => entry !== site);
-        updateBlockedList(nextItems);
+function removeSite(host) {
+    chrome.storage.local.get({ sites: [] }, (data) => {
+        const items = Array.isArray(data.sites) ? data.sites : [];
+        saveSites(items.filter((s) => s.host !== host));
+    });
+}
+
+function toggleSite(host, enabled) {
+    chrome.storage.local.get({ sites: [] }, (data) => {
+        const items = Array.isArray(data.sites) ? data.sites : [];
+        const next = items.map((s) => (s.host === host ? { ...s, enabled } : s));
+        saveSites(next);
     });
 }
 
@@ -100,5 +115,11 @@ blockedInput.addEventListener("keydown", (event) => {
     }
 });
 
-loadBlockedList();
+loadSites();
 
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes.sites) {
+        const next = Array.isArray(changes.sites.newValue) ? changes.sites.newValue : [];
+        renderSites(next);
+    }
+});
