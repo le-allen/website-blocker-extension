@@ -1,5 +1,5 @@
 # Website Blocker Extension for Firefox 💥
-- Enahnces productivity by creating a blocklist of websites that can be distractions
+- Enahnces productivity by disabling distracting websites
 
 ## To use on Firefox:
 - Download or clone the repo
