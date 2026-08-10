@@ -12,20 +12,8 @@
     }
   },
   "background": {
-    "scripts": ["background.js"]
+    "service_worker": "background.js"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "*://youtube.com/*",
-        "*://www.youtube.com/*",
-        "*://instagram.com/*",
-        "*://www.instagram.com/*"
-      ],
-      "js": ["content.js"],
-      "run_at": "document_start"
-    }
-  ],
   "icons": {
     "16": "icon.png",
     "48": "icon.png",

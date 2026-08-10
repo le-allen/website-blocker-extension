@@ -28,6 +28,11 @@ function syncDynamicRules(sites) {
     CURRENT_BLOCKED = hosts;
     const addRules = toRules(hosts);
     chrome.declarativeNetRequest.getDynamicRules((existingRules) => {
+        if (chrome.runtime.lastError) {
+            console.error("[Website Blocker] Failed to read dynamic rules:", chrome.runtime.lastError.message);
+            return;
+        }
+
         const removeRuleIds = existingRules.map((rule) => rule.id);
         chrome.declarativeNetRequest.updateDynamicRules(
             { removeRuleIds, addRules },
@@ -56,10 +61,18 @@ function isBlockedUrl(url, hosts) {
 
 function clearBlockedTabs(hosts) {
     chrome.tabs.query({}, (tabs) => {
+        if (chrome.runtime.lastError) {
+            console.error("[Website Blocker] Failed to query tabs:", chrome.runtime.lastError.message);
+            return;
+        }
+
         const toClear = tabs.filter((tab) => isBlockedUrl(tab.url, hosts));
         toClear.forEach((tab) => {
-            chrome.tabs.update(tab.id, { url: "about:blank" }).catch((err) => {
-                console.error("[Website Blocker] Failed to clear blocked tab:", err.message);
+            if (typeof tab.id !== "number") return;
+            chrome.tabs.update(tab.id, { url: "about:blank" }, () => {
+                if (chrome.runtime.lastError) {
+                    console.error("[Website Blocker] Failed to clear blocked tab:", chrome.runtime.lastError.message);
+                }
             });
         });
     });
@@ -99,8 +112,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (changeInfo.url && isBlockedUrl(changeInfo.url, CURRENT_BLOCKED)) {
-        chrome.tabs.update(tabId, { url: "about:blank" }).catch((err) => {
-            console.error("[Website Blocker] Failed to clear blocked navigation:", err.message);
+        chrome.tabs.update(tabId, { url: "about:blank" }, () => {
+            if (chrome.runtime.lastError) {
+                console.error("[Website Blocker] Failed to clear blocked navigation:", chrome.runtime.lastError.message);
+            }
         });
     }
 });
