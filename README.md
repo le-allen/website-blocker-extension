@@ -1,5 +1,5 @@
 # Website Blocker Extension for Firefox 💥
-- Enahnces productivity by disabling distracting websites
+- Enhances productivity by disabling distracting websites
 
 ## To use on Firefox:
 - Download or clone the repo
@@ -8,8 +8,9 @@
 - Load temporary addon
 - Open manifest.json
 
-## Does it work on Chrome?
-- idk
-
-## What if I use Chrome?
-- 🖕
+## To use on Google Chrome:
+- Download or clone the repo
+- In a new tab, go to chrome://extensions
+- In the top right, enable developer mode
+- Load unpacked
+- Find the folder for this extension and open it
